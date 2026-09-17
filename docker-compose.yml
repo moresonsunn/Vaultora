@@ -1,0 +1,61 @@
+# Vaultora — docker-compose for CasaOS / any Docker host.
+#
+# Bind mounts (survive container recreation):
+#   STORAGE_ROOT -> your files (normal files on the server filesystem)
+#   APP_DATA     -> sqlite db + config (vaultora.db)
+#
+# Quick start:
+#   cp .env.example .env   # then edit passwords/paths
+#   docker compose up -d
+#   open http://<host>:8080  (login with ADMIN_USER / ADMIN_PASSWORD)
+
+name: vaultora
+
+services:
+  vaultora:
+    # Prebuilt image (published by GitHub Actions on every main push).
+    # `docker compose pull && docker compose up -d` = update.
+    # Developers: `docker compose up -d --build` builds from source instead.
+    image: moresonsun/vaultora:latest
+    build: .
+    container_name: vaultora
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      PORT: 8080
+      STORAGE_ROOT: /data
+      APP_DATA: /app/data
+      TZ: ${TZ:-UTC}
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme123}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-72}
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-21474836480}
+      DEFAULT_QUOTA: ${DEFAULT_QUOTA:-}
+      TRASH_RETENTION_DAYS: ${TRASH_RETENTION_DAYS:-30}
+      COOKIE_SECURE: ${COOKIE_SECURE:-0}
+    volumes:
+      # User files — normal files on the host. Change the LEFT side only.
+      - "${STORAGE_PATH:-./storage}:/data"
+      # App database + metadata. Keep this bind-mounted too.
+      - "${APPDATA_PATH:-./appdata}:/app/data"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # Optional antivirus: uncomment to enable ClamAV scanning,
+  # then set clamav_enabled=1 in Admin > Settings.
+  # clamav:
+  #   image: clamav/clamav:latest
+  #   container_name: vaultora-clamav
+  #   restart: unless-stopped
+  #   volumes:
+  #     - clamav-db:/var/lib/clamav
+# volumes:
+#   clamav-db:

@@ -1,0 +1,74 @@
+name: vaultora
+services:
+  vaultora:
+    image: moresonsun/vaultora:latest
+    ports:
+      - target: 8080
+        published: "8080"
+        protocol: tcp
+    environment:
+      PORT: 8080
+      STORAGE_ROOT: /data
+      APP_DATA: /app/data
+      TZ: UTC
+      PUID: "1000"
+      PGID: "1000"
+      APP_URL: ""
+      ADMIN_USER: admin
+      ADMIN_PASSWORD: changeme123
+      SESSION_TTL_HOURS: "72"
+      MAX_FILE_SIZE: "21474836480"
+      TRASH_RETENTION_DAYS: "30"
+      COOKIE_SECURE: "0"
+    volumes:
+      - type: bind
+        source: /DATA/AppData/$AppID/files
+        target: /data
+      - type: bind
+        source: /DATA/AppData/$AppID/appdata
+        target: /app/data
+    restart: unless-stopped
+    x-casaos:
+      ports:
+        - container: "8080"
+          description:
+            en_us: Web UI
+      volumes:
+        - container: /data
+          description:
+            en_us: Your files — normal files on the server disk
+        - container: /app/data
+          description:
+            en_us: Database, users, shares and settings
+      envs:
+        - container: ADMIN_PASSWORD
+          description:
+            en_us: Admin password for the first login (change it afterwards!)
+
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: vaultora
+  author: Vaultora
+  category: Files
+  developer: Vaultora
+  description:
+    en_us: |
+      Private self-hosted file storage for your homelab. Upload, organize,
+      preview and share files through a clean web UI. Files stay as normal
+      files on your server disk — no sync client, no cloud, no Nextcloud complexity.
+  icon: https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/assets/vaultora-icon.png
+  screenshot_link: []
+  tagline:
+    en_us: Your server's storage — private file manager
+  thumbnail: https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/assets/vaultora-icon.png
+  tips:
+    before_install:
+      en_us: Pick your storage location (default /DATA/AppData/vaultora/files) and set a strong admin password.
+    after_install:
+      en_us: Open the app and log in with your admin user. Change the password under the user menu if needed. Updates appear as an Update button on this app.
+  title:
+    en_us: Vaultora
+  index: /
+  port_map: "8080"

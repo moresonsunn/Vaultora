@@ -1,0 +1,22 @@
+node_modules/
+npm-debug.log*
+
+# runtime bind mounts (never commit real data)
+storage/
+appdata/
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+
+# local config + scratch
+.env
+cookies*.txt
+upload-test.txt
+vaultora-store.zip
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

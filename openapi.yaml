@@ -1,0 +1,103 @@
+openapi: 3.0.3
+info:
+  title: Vaultora API
+  version: 1.0.0
+  description: Private self-hosted file storage. Session cookie `vid_session` + `X-CSRF-Token` header on mutating requests.
+servers:
+  - url: /
+paths:
+  /health:
+    get:
+      summary: Health
+      responses: { '200': { description: OK } }
+  /api/auth/login:
+    post:
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                password: { type: string }
+                totp: { type: string }
+      responses: { '200': { description: session }, '401': { description: invalid } }
+  /api/auth/logout:
+    post: { summary: Logout, responses: { '200': { description: OK } } }
+  /api/auth/me:
+    get: { summary: Current user, responses: { '200': { description: user } } }
+  /api/users:
+    get: { summary: List users (admin), responses: { '200': { description: users } } }
+    post:
+      summary: Create user (admin)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                password: { type: string }
+                role: { type: string, enum: [admin, user] }
+                quota_bytes: { type: integer, nullable: true }
+      responses: { '201': { description: created } }
+  /api/users/{id}:
+    put: { summary: Update user (admin), responses: { '200': { description: OK } } }
+    delete: { summary: Delete user (admin), responses: { '200': { description: OK } } }
+  /api/files:
+    get:
+      summary: List folder
+      parameters:
+        - { name: path, in: query, schema: { type: string }, example: /My Files }
+        - { name: sort, in: query, schema: { type: string, enum: [name, size, date, type] } }
+        - { name: order, in: query, schema: { type: string, enum: [asc, desc] } }
+      responses: { '200': { description: listing } }
+  /api/files/mkdir:
+    post: { summary: Create folder, responses: { '201': { description: created } } }
+  /api/files/rename:
+    post: { summary: Rename, responses: { '200': { description: OK } } }
+  /api/files/move:
+    post: { summary: Move, responses: { '200': { description: results } } }
+  /api/files/copy:
+    post: { summary: Copy, responses: { '200': { description: results } } }
+  /api/files/delete:
+    post: { summary: Delete (trash or permanent), responses: { '200': { description: results } } }
+  /api/files/download:
+    get:
+      summary: Download (streaming, Range supported)
+      parameters:
+        - { name: path, in: query, required: true, schema: { type: string } }
+      responses: { '200': { description: bytes } }
+  /api/files/preview:
+    get: { summary: Inline preview / text excerpt, responses: { '200': { description: preview } } }
+  /api/files/stat:
+    get: { summary: Metadata, responses: { '200': { description: stat } } }
+  /api/files/search:
+    get:
+      summary: Recursive search (capped walk)
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+      responses: { '200': { description: results } }
+  /api/files/usage:
+    get: { summary: Own storage usage, responses: { '200': { description: usage } } }
+  /api/uploads/simple:
+    post: { summary: Multipart upload (small files), responses: { '201': { description: results } } }
+  /api/uploads/init:
+    post: { summary: Init chunked upload, responses: { '201': { description: upload id } } }
+  /api/uploads/{id}:
+    put: { summary: Send chunk (X-Offset), responses: { '200': { description: progress } } }
+    delete: { summary: Cancel upload, responses: { '200': { description: OK } } }
+  /api/uploads/{id}/complete:
+    post: { summary: Assemble chunks, responses: { '200': { description: file } } }
+  /api/shares:
+    get: { summary: List shares, responses: { '200': { description: shares } } }
+    post: { summary: Create share link, responses: { '201': { description: share } } }
+  /api/public/{token}:
+    get: { summary: Public share metadata (password via ?password=), responses: { '200': { description: share } } }
+  /api/admin/activity:
+    get: { summary: Audit log (admin), responses: { '200': { description: log } } }
+  /api/admin/settings:
+    get: { summary: Settings (admin), responses: { '200': { description: settings } } }
+    put: { summary: Update settings (admin), responses: { '200': { description: OK } } }

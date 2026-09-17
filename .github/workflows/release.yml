@@ -1,0 +1,122 @@
+name: Release
+
+# Push a tag like v1.1.0 and this workflow:
+#   1. builds + pushes moresonsun/vaultora:<tag> (and moves :latest), multi-arch
+#   2. creates the GitHub Release with notes
+#   3. packages the CasaOS store (vaultora-store.zip) and attaches it to the release
+#   4. stamps the new version into the CasaOS app.json on main
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+env:
+  IMAGE_NAME: moresonsun/vaultora
+
+jobs:
+  build:
+    name: Build & push release image
+    runs-on: ubuntu-latest
+    outputs:
+      short_sha: ${{ steps.meta.outputs.short_sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Metadata
+        id: meta
+        run: |
+          echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "date_tag=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            APP_VERSION=${{ steps.meta.outputs.tag }}
+            GIT_COMMIT=${{ github.sha }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}
+            ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.short_sha }}
+            ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.date_tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  store-zip:
+    name: Package CasaOS store
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build vaultora-store.zip
+        run: python3 scripts/package_casaos_store.py --out vaultora-store.zip && unzip -l vaultora-store.zip
+
+      - name: Create GitHub Release + attach store
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Vaultora ${{ github.ref_name }}
+          generate_release_notes: true
+          body: |
+            Image: `${{ env.IMAGE_NAME }}:${{ github.ref_name }}` (also `:latest`, multi-arch amd64/arm64)
+
+            CasaOS: add this release asset as a Custom Source, or just press **Update** on your installed app:
+            `https://github.com/moresonsunn/Vaultora/releases/latest/download/vaultora-store.zip`
+          files: vaultora-store.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  bump-store-version:
+    name: Stamp version into CasaOS app.json
+    runs-on: ubuntu-latest
+    needs: store-zip
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Bump app.json version
+        run: |
+          python3 - "$GITHUB_REF_NAME" <<'EOF'
+          import json, sys
+          tag = sys.argv[1]
+          p = 'casaos-appstore/Apps/vaultora/app.json'
+          d = json.load(open(p))
+          d['version'] = tag
+          for c in d.get('container_list', []):
+              if c.get('name') == 'vaultora':
+                  c['image'] = 'moresonsun/vaultora:latest'
+          json.dump(d, open(p, 'w'), indent=2)
+          print('stamped', tag)
+          EOF
+
+      - name: Commit back to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add casaos-appstore/Apps/vaultora/app.json
+          git diff --cached --quiet || git commit -m "chore(store): stamp ${GITHUB_REF_NAME} into CasaOS app.json"
+          git push origin main

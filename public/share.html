@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shared file — Vaultora</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-card" style="width:min(640px,100%)">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:grid;place-items:center;color:#fff;font-weight:800">V</div>
+      <h1 style="margin:0;font-size:20px">Shared file</h1>
+    </div>
+    <div id="box"><p class="muted">Loading…</p></div>
+  </div>
+</div>
+<script>
+'use strict';
+const token = location.pathname.split('/')[2] || '';
+const box = document.getElementById('box');
+let pw = '';
+async function load() {
+  const q = pw ? '?password=' + encodeURIComponent(pw) : '';
+  const r = await fetch('/api/public/' + encodeURIComponent(token) + q);
+  const d = await r.json().catch(() => ({}));
+  if (r.status === 401 && d.need_password) {
+    box.innerHTML = '<p>🔒 This link is password-protected.</p><input id="pw" type="password" placeholder="Password" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px"><div style="margin-top:10px"><button class="btn primary" id="go">Unlock</button></div><p id="err" style="color:var(--danger)"></p>';
+    document.getElementById('go').onclick = () => { pw = document.getElementById('pw').value; load(); };
+    return;
+  }
+  if (!r.ok) { box.innerHTML = '<p>⚠️ ' + (d.error || 'Link unavailable') + '</p>'; return; }
+  const dl = (f) => '/api/public/' + encodeURIComponent(token) + '/download' + (d.is_dir ? '?file=' + encodeURIComponent(f) + (pw ? '&password=' + encodeURIComponent(pw) : '') : (pw ? '?password=' + encodeURIComponent(pw) : ''));
+  if (!d.is_dir) {
+    box.innerHTML = '<h3 style="margin:0 0 6px">' + esc(d.name) + '</h3><p class="muted small">' + fmt(d.size) + ' · ' + esc(d.mime || '') + '</p><div id="pv"></div><p><a class="btn primary" href="' + dl() + '">⬇ Download</a></p>';
+    const pv = document.getElementById('pv');
+    if ((d.mime || '').startsWith('image/')) pv.innerHTML = '<img src="' + pub() + '" style="max-width:100%;border-radius:10px">';
+    else if ((d.mime || '').startsWith('video/')) pv.innerHTML = '<video src="' + pub() + '" controls style="width:100%">';
+    else if ((d.mime || '').startsWith('audio/')) pv.innerHTML = '<audio src="' + pub() + '" controls style="width:100%">';
+    else if (d.mime === 'application/pdf') pv.innerHTML = '<iframe src="' + pub() + '" style="width:100%;height:60vh;border:0">';
+    function pub() { return '/api/public/' + encodeURIComponent(token) + '/preview' + (pw ? '?password=' + encodeURIComponent(pw) : ''); }
+  } else {
+    box.innerHTML = '<h3 style="margin:0 0 6px">📁 ' + esc(d.name) + '</h3><table class="admin-table"><tbody></tbody></table>';
+    const tb = box.querySelector('tbody');
+    (d.children || []).forEach((c) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + esc(c.name) + '</td><td class="muted">' + (c.is_dir ? 'folder' : fmt(c.size)) + '</td><td style="text-align:right"></td>';
+      const a = document.createElement('a'); a.className = 'btn sm'; a.textContent = 'Download'; a.href = dl(c.name);
+      tr.lastChild.appendChild(a); tb.appendChild(tr);
+    });
+    if (!(d.children || []).length) box.innerHTML += '<p class="muted">Empty folder.</p>';
+  }
+}
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function fmt(n) { n = Number(n) || 0; if (n < 1024) return n + ' B'; const u = ['KB', 'MB', 'GB', 'TB']; let v = n / 1024, i = 0; while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; } return v.toFixed(1) + ' ' + u[i]; }
+load();
+</script>
+</body>
+</html>

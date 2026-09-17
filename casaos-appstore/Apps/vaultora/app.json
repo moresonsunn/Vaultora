@@ -1,0 +1,51 @@
+{
+  "id": "vaultora",
+  "title": "Vaultora",
+  "version": "1.0.0",
+  "description": "Private self-hosted file storage. Upload, organize, preview and share files on your own server.",
+  "tagline": "Your server's storage — private file manager",
+  "architecture": ["amd64", "arm64"],
+  "author": "Vaultora",
+  "site": "https://github.com/moresonsunn/Vaultora",
+  "port_map": "8080",
+  "scheme": "http",
+  "icon": "https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/assets/vaultora-icon.png",
+  "thumbnail": "https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/assets/vaultora-icon.png",
+  "categories": ["Files"],
+  "restart": "unless-stopped",
+  "container_list": [
+    {
+      "name": "vaultora",
+      "image": "moresonsun/vaultora:latest",
+      "ports": ["8080:8080"],
+      "volumes": [
+        {"container": "/data", "host": "/DATA/AppData/vaultora/files"},
+        {"container": "/app/data", "host": "/DATA/AppData/vaultora/appdata"}
+      ],
+      "envs": [
+        {"name": "PORT", "value": "8080"},
+        {"name": "STORAGE_ROOT", "value": "/data"},
+        {"name": "APP_DATA", "value": "/app/data"},
+        {"name": "TZ", "value": "UTC"},
+        {"name": "PUID", "value": "1000"},
+        {"name": "PGID", "value": "1000"},
+        {"name": "ADMIN_USER", "value": "admin"},
+        {"name": "ADMIN_PASSWORD", "value": "changeme123"},
+        {"name": "SESSION_TTL_HOURS", "value": "72"},
+        {"name": "MAX_FILE_SIZE", "value": "21474836480"},
+        {"name": "TRASH_RETENTION_DAYS", "value": "30"}
+      ],
+      "health_check": {
+        "test": ["CMD", "wget", "-qO-", "http://localhost:8080/health"],
+        "interval": "30s",
+        "timeout": "5s",
+        "retries": 5
+      },
+      "restart": "unless-stopped"
+    }
+  ],
+  "tips": {
+    "before_install": "Set a strong ADMIN_PASSWORD. Your files will live under /DATA/AppData/vaultora/files.",
+    "after_install": "Open the app and log in with your admin user. New releases show up as an Update button on this app."
+  }
+}

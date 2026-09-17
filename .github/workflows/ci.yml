@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    name: Tests (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Run tests
+        run: npm test
+
+  compose-lint:
+    name: Validate compose files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate root compose
+        run: docker compose -f docker-compose.yml config -q
+
+      - name: Validate CasaOS store compose
+        run: docker compose -f casaos-appstore/Apps/vaultora/docker-compose.yml config -q
+
+      - name: Validate store index.json
+        run: python3 -c "import json; d=json.load(open('casaos-appstore/index.json')); assert d['apps'][0]['index']=='Apps/vaultora/docker-compose.yml', d; print('store index OK:', d['apps'][0]['id'])"
