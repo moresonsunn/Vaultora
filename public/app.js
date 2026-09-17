@@ -43,7 +43,25 @@ async function api(path, opts = {}) {
     o.headers['Content-Type'] = 'application/json';
     o.body = JSON.stringify(o.body);
   }
-  const r = await fetch(path, o);
+  // A hung request (browser extension, ad-blocker, VPN, proxy) must NEVER
+  // wedge the UI silently: abort after timeoutMs and say so.
+  let timer = null;
+  if (opts.timeoutMs) {
+    const ctrl = new AbortController();
+    o.signal = ctrl.signal;
+    timer = setTimeout(() => ctrl.abort(), opts.timeoutMs);
+  }
+  let r;
+  try {
+    r = await fetch(path, o);
+  } catch (e) {
+    if (timer) clearTimeout(timer);
+    if (e && e.name === 'AbortError') {
+      throw new Error('request timed out — the browser blocked it or the server is unreachable (check ad-blocker / Brave Shields / VPN for this site)');
+    }
+    throw e;
+  }
+  if (timer) clearTimeout(timer);
   // 401 usually means the session died -> back to login. The login form itself
   // opts out via noAuthRedirect so the REAL server error (wrong password,
   // 2FA required, rate limit) reaches the user instead of a generic message.
@@ -65,22 +83,32 @@ async function boot() {
     document.documentElement.dataset.theme = S.theme;
     localStorage.setItem('v_theme', S.theme);
   };
+  // Bind the login form FIRST, synchronously, before any network call.
+  // If the very first request hangs (blocked by an extension/VPN), the
+  // button must still work instead of falling back to a dead native submit.
+  $('#loginForm').onsubmit = async (e) => {
+    e.preventDefault();
+    $('#loginErr').textContent = '';
+    const btn = $('#loginForm button[type=submit]');
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+    try {
+      const r = await api('/api/auth/login', { method: 'POST', noAuthRedirect: true, timeoutMs: 20000, body: { username: $('#liUser').value.trim(), password: $('#liPass').value, totp: $('#liTotp').value.trim() || undefined } });
+      S.user = r.user; S.csrf = r.csrf; enter();
+    } catch (err) {
+      if (String(err.message).includes('two-factor')) { $('#totpWrap').hidden = false; $('#loginErr').textContent = 'Enter your 2FA code and sign in again.'; }
+      else $('#loginErr').textContent = err.message;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
+  };
   try {
     const me = await api('/api/auth/me');
     S.user = me.user; S.csrf = me.csrf || S.csrf;
     enter();
   } catch { showLogin(); }
-  $('#loginForm').onsubmit = async (e) => {
-    e.preventDefault();
-    $('#loginErr').textContent = '';
-    try {
-      const r = await api('/api/auth/login', { method: 'POST', noAuthRedirect: true, body: { username: $('#liUser').value.trim(), password: $('#liPass').value, totp: $('#liTotp').value.trim() || undefined } });
-      S.user = r.user; S.csrf = r.csrf; enter();
-    } catch (err) {
-      if (String(err.message).includes('two-factor')) { $('#totpWrap').hidden = false; $('#loginErr').textContent = 'Enter your 2FA code and sign in again.'; }
-      else $('#loginErr').textContent = err.message;
-    }
-  };
 }
 
 function enter() {
