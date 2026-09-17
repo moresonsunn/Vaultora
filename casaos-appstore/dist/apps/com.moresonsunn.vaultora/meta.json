@@ -1,0 +1,24 @@
+{
+  "tagline": "Your server's storage — private file manager",
+  "description": "Private self-hosted file storage for your homelab. Upload, organize,\npreview and share files through a clean web UI. Files stay as normal\nfiles on your server disk — no sync client, no cloud, no Nextcloud complexity.\n",
+  "thumbnail": "https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/assets/vaultora-icon.png",
+  "screenshot_link": [],
+  "tips": {
+    "before_install": "Pick your storage location (default /DATA/AppData/vaultora/files) and set a strong admin password.",
+    "after_install": "Open the app and log in with your admin user. Updates appear as an Update button on this app."
+  },
+  "author": "moresonsunn",
+  "developer": "Vaultora",
+  "category": "Productivity",
+  "architectures": [
+    "amd64",
+    "arm64"
+  ],
+  "version": "1.0.0",
+  "update_at": "2026-09-17",
+  "release_note": "Initial CasaOS store release.",
+  "website": "https://hub.docker.com/r/moresonsun/vaultora",
+  "repo": "https://github.com/moresonsunn/Vaultora",
+  "support": "https://github.com/moresonsunn/Vaultora/issues",
+  "docs": "https://github.com/moresonsunn/Vaultora/blob/main/docs/CASAOS.md"
+}

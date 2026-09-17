@@ -43,3 +43,9 @@ jobs:
 
       - name: Validate store index.json
         run: python3 -c "import json; d=json.load(open('casaos-appstore/index.json')); assert d['apps'][0]['index']=='Apps/vaultora/docker-compose.yml', d; print('store index OK:', d['apps'][0]['id'])"
+
+      - name: Rebuild store dist/ (spec check)
+        run: |
+          python3 scripts/build_store_dist.py
+          python3 -c "import json; d=json.load(open('casaos-appstore/dist/index.json')); a=d['apps'][0]; assert all(k in a for k in ('id','title','version','compose_url','meta_url','content_hash')), a; print('dist index OK:', a['id'], a['version'])"
+          python3 -c "import json; json.load(open('casaos-appstore/dist/store.json')); print('dist store OK')"

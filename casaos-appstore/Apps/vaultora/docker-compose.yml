@@ -32,43 +32,66 @@ services:
       ports:
         - container: "8080"
           description:
+            en_US: Web UI
             en_us: Web UI
       volumes:
         - container: /data
           description:
+            en_US: Your files — normal files on the server disk
             en_us: Your files — normal files on the server disk
         - container: /app/data
           description:
+            en_US: Database, users, shares and settings
             en_us: Database, users, shares and settings
       envs:
         - container: ADMIN_PASSWORD
           description:
+            en_US: Admin password for the first login (change it afterwards!)
             en_us: Admin password for the first login (change it afterwards!)
 
 x-casaos:
-  architectures:
-    - amd64
-    - arm64
+  id: com.moresonsunn.vaultora
   main: vaultora
-  author: Vaultora
-  category: Files
-  developer: Vaultora
+  index: /
+  port_map: "8080"
+  scheme: http
+  icon: https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/assets/vaultora-icon.png
+  title:
+    en_US: Vaultora
+    en_us: Vaultora
+  tagline:
+    en_US: Your server's storage — private file manager
+    en_us: Your server's storage — private file manager
   description:
+    en_US: |
+      Private self-hosted file storage for your homelab. Upload, organize,
+      preview and share files through a clean web UI. Files stay as normal
+      files on your server disk — no sync client, no cloud, no Nextcloud complexity.
     en_us: |
       Private self-hosted file storage for your homelab. Upload, organize,
       preview and share files through a clean web UI. Files stay as normal
       files on your server disk — no sync client, no cloud, no Nextcloud complexity.
-  icon: https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/assets/vaultora-icon.png
-  screenshot_link: []
-  tagline:
-    en_us: Your server's storage — private file manager
   thumbnail: https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/assets/vaultora-icon.png
+  screenshot_link: []
   tips:
     before_install:
+      en_US: Pick your storage location (default /DATA/AppData/vaultora/files) and set a strong admin password.
       en_us: Pick your storage location (default /DATA/AppData/vaultora/files) and set a strong admin password.
     after_install:
-      en_us: Open the app and log in with your admin user. Change the password under the user menu if needed. Updates appear as an Update button on this app.
-  title:
-    en_us: Vaultora
-  index: /
-  port_map: "8080"
+      en_US: Open the app and log in with your admin user. Updates appear as an Update button on this app.
+      en_us: Open the app and log in with your admin user. Updates appear as an Update button on this app.
+  author: moresonsunn
+  developer: Vaultora
+  category: Productivity
+  architectures:
+    - amd64
+    - arm64
+  version: "1.0.0"
+  update_at: "2026-09-17"
+  release_notes:
+    en_US: Initial CasaOS store release.
+    en_us: Initial CasaOS store release.
+  website: https://hub.docker.com/r/moresonsun/vaultora
+  repo: https://github.com/moresonsunn/Vaultora
+  support: https://github.com/moresonsunn/Vaultora/issues
+  docs: https://github.com/moresonsunn/Vaultora/blob/main/docs/CASAOS.md

@@ -1,0 +1,58 @@
+name: vaultora
+services:
+  vaultora:
+    image: moresonsun/vaultora:latest
+    ports:
+    - target: 8080
+      published: '8080'
+      protocol: tcp
+    environment:
+      PORT: 8080
+      STORAGE_ROOT: /data
+      APP_DATA: /app/data
+      TZ: UTC
+      PUID: '1000'
+      PGID: '1000'
+      APP_URL: ''
+      ADMIN_USER: admin
+      ADMIN_PASSWORD: changeme123
+      SESSION_TTL_HOURS: '72'
+      MAX_FILE_SIZE: '21474836480'
+      TRASH_RETENTION_DAYS: '30'
+      COOKIE_SECURE: '0'
+    volumes:
+    - type: bind
+      source: /DATA/AppData/$AppID/files
+      target: /data
+    - type: bind
+      source: /DATA/AppData/$AppID/appdata
+      target: /app/data
+    restart: unless-stopped
+    x-casaos:
+      ports:
+      - container: '8080'
+        description:
+          en_US: Web UI
+          en_us: Web UI
+      volumes:
+      - container: /data
+        description:
+          en_US: Your files — normal files on the server disk
+          en_us: Your files — normal files on the server disk
+      - container: /app/data
+        description:
+          en_US: Database, users, shares and settings
+          en_us: Database, users, shares and settings
+      envs:
+      - container: ADMIN_PASSWORD
+        description:
+          en_US: Admin password for the first login (change it afterwards!)
+          en_us: Admin password for the first login (change it afterwards!)
+x-casaos:
+  id: com.moresonsunn.vaultora
+  main: vaultora
+  index: /
+  port_map: '8080'
+  scheme: http
+  icon: https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/dist/apps/com.moresonsunn.vaultora/assets/icon.png
+  title: Vaultora

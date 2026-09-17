@@ -6,16 +6,20 @@ install once from the store, then every new release shows up as a one-click
 
 ## Option A — Vaultora App Store (recommended: one-click install + updates)
 
-1. In CasaOS go to **App Store → ⋯ (or Settings) → Add a custom source** and add
-   one of these URLs:
-   - Live store (always current):
-     ```
-     https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/index.json
-     ```
-   - Pinned release bundle (only changes when you re-add a newer release):
-     ```
-     https://github.com/moresonsunn/Vaultora/releases/latest/download/vaultora-store.zip
-     ```
+1. In CasaOS open the **App Store**, go to its settings/menu and **add a custom
+   source** with this URL (the modern store format — try this first):
+   ```
+   https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/dist/store.json
+   ```
+   If your CasaOS version does not accept that, use one of these instead:
+   ```
+   https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/index.json
+   ```
+   ```
+   https://github.com/moresonsunn/Vaultora/releases/latest/download/vaultora-store.zip
+   ```
+   (If even the zip fails, refresh the source after a minute and check you can
+   open the URL in a browser — it must return JSON, not a GitHub HTML page.)
 2. Open the new **Vaultora Store** source, install **Vaultora**.
 3. On the install screen set:
    - `ADMIN_PASSWORD` → a long unique password (do NOT keep `changeme123`)

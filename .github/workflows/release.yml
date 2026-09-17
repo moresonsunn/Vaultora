@@ -89,7 +89,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   bump-store-version:
-    name: Stamp version into CasaOS app.json
+    name: Stamp version + rebuild store
     runs-on: ubuntu-latest
     needs: store-zip
     steps:
@@ -101,7 +101,7 @@ jobs:
       - name: Bump app.json version
         run: |
           python3 - "$GITHUB_REF_NAME" <<'EOF'
-          import json, sys
+          import json, re, sys
           tag = sys.argv[1]
           p = 'casaos-appstore/Apps/vaultora/app.json'
           d = json.load(open(p))
@@ -110,13 +110,28 @@ jobs:
               if c.get('name') == 'vaultora':
                   c['image'] = 'moresonsun/vaultora:latest'
           json.dump(d, open(p, 'w'), indent=2)
+
+          # bump source compose x-casaos.version (only that line)
+          cp = 'casaos-appstore/Apps/vaultora/docker-compose.yml'
+          s = open(cp, encoding='utf-8').read()
+          s2, n = re.subn(r'(?m)^(  version: )".*"$', rf'\1"{tag}"', s, count=1)
+          assert n == 1, 'x-casaos.version line not found'
+          open(cp, 'w', encoding='utf-8').write(s2)
           print('stamped', tag)
           EOF
+
+      - name: Rebuild dist/ + committed store zip
+        run: |
+          python3 scripts/build_store_dist.py
+          python3 scripts/package_casaos_store.py --out casaos-appstore/vaultora-store.zip
 
       - name: Commit back to main
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add casaos-appstore/Apps/vaultora/app.json
-          git diff --cached --quiet || git commit -m "chore(store): stamp ${GITHUB_REF_NAME} into CasaOS app.json"
+          git add casaos-appstore/Apps/vaultora/app.json \
+                  casaos-appstore/Apps/vaultora/docker-compose.yml \
+                  casaos-appstore/dist \
+                  casaos-appstore/vaultora-store.zip
+          git diff --cached --quiet || git commit -m "chore(store): stamp ${GITHUB_REF_NAME} + rebuild dist"
           git push origin main

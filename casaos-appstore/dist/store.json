@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "store_id": "vaultora-store",
+  "name": "Vaultora Store",
+  "description": "Private self-hosted file storage for CasaOS. Your server's storage, nothing else.",
+  "maintainer": "moresonsunn",
+  "url": "https://github.com/moresonsunn/Vaultora",
+  "icon": "https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/assets/vaultora-icon.png"
+}

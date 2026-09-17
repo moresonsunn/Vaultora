@@ -1,0 +1,23 @@
+{
+  "store_id": "vaultora-store",
+  "apps": [
+    {
+      "id": "com.moresonsunn.vaultora",
+      "title": "Vaultora",
+      "tagline": "Your server's storage — private file manager",
+      "category": "Productivity",
+      "version": "1.0.0",
+      "author": "moresonsunn",
+      "developer": "Vaultora",
+      "architectures": [
+        "amd64",
+        "arm64"
+      ],
+      "icon": "https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/dist/apps/com.moresonsunn.vaultora/assets/icon.png",
+      "thumbnail": "https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/assets/vaultora-icon.png",
+      "compose_url": "https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/dist/apps/com.moresonsunn.vaultora/docker-compose.yml",
+      "meta_url": "https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/dist/apps/com.moresonsunn.vaultora/meta.json",
+      "content_hash": "sha256:49683220a2020a157e17aa2bb5b24c5d6f0d0fd71f4f01c1b41ee442a42fc3e7"
+    }
+  ]
+}

@@ -9,11 +9,11 @@ appdata/
 *.db-shm
 *.db-journal
 
-# local config + scratch
+# local config + scratch (the committed copy under casaos-appstore/ is intentional)
 .env
 cookies*.txt
 upload-test.txt
-vaultora-store.zip
+/vaultora-store.zip
 
 # OS / editor
 .DS_Store

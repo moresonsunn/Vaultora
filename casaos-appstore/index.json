@@ -1,16 +1,23 @@
 {
   "name": "Vaultora Store",
   "description": "Private self-hosted file storage for CasaOS. Your server's storage, nothing else.",
-  "tips": "Add this URL as a Custom Source in CasaOS.",
-  "author": "Vaultora",
+  "tips": "Add this URL as a Custom Source in CasaOS. On current CasaOS use the v2 store URL instead: https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/dist/store.json",
+  "author": "moresonsunn",
   "source": "https://github.com/moresonsunn/Vaultora",
   "version": 2,
   "apps": [
     {
       "id": "vaultora",
       "title": "Vaultora",
+      "tagline": "Your server's storage — private file manager",
       "description": "Simple private web file storage: upload, organize, preview, and share files on your own server. No sync client, no cloud.",
+      "version": "1.0.0",
+      "category": "Productivity",
+      "author": "moresonsunn",
+      "developer": "Vaultora",
+      "architectures": ["amd64", "arm64"],
       "icon": "https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/assets/vaultora-icon.png",
+      "thumbnail": "https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/assets/vaultora-icon.png",
       "index": "Apps/vaultora/docker-compose.yml",
       "port_map": "8080"
     }
