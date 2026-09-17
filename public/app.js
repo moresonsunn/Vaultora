@@ -44,7 +44,10 @@ async function api(path, opts = {}) {
     o.body = JSON.stringify(o.body);
   }
   const r = await fetch(path, o);
-  if (r.status === 401) { showLogin(); throw new Error('signed out'); }
+  // 401 usually means the session died -> back to login. The login form itself
+  // opts out via noAuthRedirect so the REAL server error (wrong password,
+  // 2FA required, rate limit) reaches the user instead of a generic message.
+  if (r.status === 401 && !opts.noAuthRedirect) { showLogin(); throw new Error('signed out'); }
   const ct = r.headers.get('content-type') || '';
   const data = ct.includes('json') ? await r.json().catch(() => ({})) : await r.text();
   if (!r.ok) throw new Error((data && data.error) || `request failed (${r.status})`);
@@ -71,7 +74,7 @@ async function boot() {
     e.preventDefault();
     $('#loginErr').textContent = '';
     try {
-      const r = await api('/api/auth/login', { method: 'POST', body: { username: $('#liUser').value.trim(), password: $('#liPass').value, totp: $('#liTotp').value.trim() || undefined } });
+      const r = await api('/api/auth/login', { method: 'POST', noAuthRedirect: true, body: { username: $('#liUser').value.trim(), password: $('#liPass').value, totp: $('#liTotp').value.trim() || undefined } });
       S.user = r.user; S.csrf = r.csrf; enter();
     } catch (err) {
       if (String(err.message).includes('two-factor')) { $('#totpWrap').hidden = false; $('#loginErr').textContent = 'Enter your 2FA code and sign in again.'; }
