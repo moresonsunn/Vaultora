@@ -23,5 +23,5 @@ docker compose pull 2>$null
 docker compose up -d
 
 Write-Host ''
-Write-Host 'Vaultora is starting. Open http://localhost:8080 (or your APP_PORT).'
+Write-Host 'Vaultora is starting. Open http://localhost:8090 (or your APP_PORT).'
 Write-Host 'First login: user from ADMIN_USER in .env (default: admin).'

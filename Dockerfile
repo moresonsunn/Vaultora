@@ -6,7 +6,7 @@ ARG GIT_COMMIT=unknown
 ENV APP_VERSION=${APP_VERSION} \
     GIT_COMMIT=${GIT_COMMIT} \
     NODE_ENV=production \
-    PORT=8080 \
+    PORT=8090 \
     STORAGE_ROOT=/data \
     APP_DATA=/app/data \
     TZ=UTC \
@@ -28,10 +28,10 @@ RUN chmod +x /entrypoint.sh \
   && mkdir -p /data /app/data \
   && node -e "console.log('build ok')"
 
-EXPOSE 8080
+EXPOSE 8090
 VOLUME ["/data", "/app/data"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:${PORT:-8080}/health | grep -q '"ok":true' || exit 1
+  CMD wget -qO- http://127.0.0.1:${PORT:-8090}/health | grep -q '"ok":true' || exit 1
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "src/index.js"]

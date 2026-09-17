@@ -18,7 +18,7 @@ Nothing else matters: the container image is disposable.
 rsync -a --delete /DATA/Storage/Files/ /backup/vaultora-files/
 
 # Database — checkpoint WAL first for a consistent copy:
-docker exec vaultora sh -c 'wget -qO- http://127.0.0.1:8080/health'  # sanity
+docker exec vaultora sh -c 'wget -qO- http://127.0.0.1:8090/health'  # sanity
 sqlite3 /DATA/AppData/vaultora/vaultora.db "PRAGMA wal_checkpoint(TRUNCATE);"
 cp /DATA/AppData/vaultora/vaultora.db /backup/vaultora-appdata/vaultora-$(date +%F).db
 ```

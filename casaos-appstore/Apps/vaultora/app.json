@@ -7,7 +7,7 @@
   "architecture": ["amd64", "arm64"],
   "author": "Vaultora",
   "site": "https://github.com/moresonsunn/Vaultora",
-  "port_map": "8080",
+  "port_map": "8090",
   "scheme": "http",
   "icon": "https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/assets/vaultora-icon.png",
   "thumbnail": "https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/assets/vaultora-icon.png",
@@ -17,13 +17,13 @@
     {
       "name": "vaultora",
       "image": "moresonsun/vaultora:latest",
-      "ports": ["8080:8080"],
+      "ports": ["8090:8090"],
       "volumes": [
         {"container": "/data", "host": "/DATA/AppData/vaultora/files"},
         {"container": "/app/data", "host": "/DATA/AppData/vaultora/appdata"}
       ],
       "envs": [
-        {"name": "PORT", "value": "8080"},
+        {"name": "PORT", "value": "8090"},
         {"name": "STORAGE_ROOT", "value": "/data"},
         {"name": "APP_DATA", "value": "/app/data"},
         {"name": "TZ", "value": "UTC"},
@@ -36,7 +36,7 @@
         {"name": "TRASH_RETENTION_DAYS", "value": "30"}
       ],
       "health_check": {
-        "test": ["CMD", "wget", "-qO-", "http://localhost:8080/health"],
+        "test": ["CMD", "wget", "-qO-", "http://localhost:8090/health"],
         "interval": "30s",
         "timeout": "5s",
         "retries": 5

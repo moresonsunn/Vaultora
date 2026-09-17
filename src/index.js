@@ -15,7 +15,7 @@ const { getDb, getSetting } = require('./db');
 const { ensureStorageLayout, storageRoot } = require('./fsutil');
 const { csrfProtect } = require('./middleware');
 
-const PORT = parseInt(process.env.PORT || '8080', 10) || 8080;
+const PORT = parseInt(process.env.PORT || '8090', 10) || 8090;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
 const app = express();
@@ -24,17 +24,28 @@ app.disable('x-powered-by');
 
 // Security headers. Static frontend needs inline scripts -> allow 'unsafe-inline' for script/style only.
 // Uploaded files are NEVER served from the frontend static mount, so this does not execute uploads.
+// NOTE: HSTS is deliberately OFF, and the CSP has NO upgrade-insecure-requests.
+// Vaultora is typically served as plain HTTP on a LAN IP (possibly behind an
+// SSL-terminating reverse proxy). Either directive makes browsers rewrite all
+// http:// subresource/API requests to https://, which dies against a plain-HTTP
+// server as net::ERR_SSL_PROTOCOL_ERROR (and poisons HSTS per host for months).
 app.use(
   helmet({
+    hsts: false,
     contentSecurityPolicy: {
+      useDefaults: false,
       directives: {
         defaultSrc: ["'self'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'self'"],
+        objectSrc: ["'none'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
+        fontSrc: ["'self'", 'data:'],
         imgSrc: ["'self'", 'data:', 'blob:'],
         mediaSrc: ["'self'", 'blob:'],
         connectSrc: ["'self'"],
-        frameAncestors: ["'self'"],
       },
     },
     crossOriginEmbedderPolicy: false,
@@ -158,8 +169,8 @@ app.get('/api/openapi.yaml', (req, res) => {
   else res.status(404).json({ error: 'no spec' });
 });
 
-// Share page + app shell (static)
-app.use(express.static(PUBLIC_DIR, { index: false, maxAge: '1h', dotfiles: 'ignore' }));
+// Share page + app shell (static). Short cache so clients pick up fixes fast.
+app.use(express.static(PUBLIC_DIR, { index: false, maxAge: '15m', dotfiles: 'ignore' }));
 
 // /s/:token share landing (serves app shell; JS fetches /api/public/:token)
 app.get('/s/:token', (req, res) => {

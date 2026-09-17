@@ -7,7 +7,7 @@
 # Quick start:
 #   cp .env.example .env   # then edit passwords/paths
 #   docker compose up -d
-#   open http://<host>:8080  (login with ADMIN_USER / ADMIN_PASSWORD)
+#   open http://<host>:8090  (login with ADMIN_USER / ADMIN_PASSWORD)
 
 name: vaultora
 
@@ -21,15 +21,15 @@ services:
     container_name: vaultora
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-8080}:8080"
+      - "${APP_PORT:-8090}:8090"
     environment:
-      PORT: 8080
+      PORT: 8090
       STORAGE_ROOT: /data
       APP_DATA: /app/data
       TZ: ${TZ:-UTC}
       PUID: ${PUID:-1000}
       PGID: ${PGID:-1000}
-      APP_URL: ${APP_URL:-http://localhost:8080}
+      APP_URL: ${APP_URL:-http://localhost:8090}
       ADMIN_USER: ${ADMIN_USER:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme123}
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-72}
@@ -43,7 +43,7 @@ services:
       # App database + metadata. Keep this bind-mounted too.
       - "${APPDATA_PATH:-./appdata}:/app/data"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:${PORT:-8090}/health"]
       interval: 30s
       timeout: 5s
       retries: 3

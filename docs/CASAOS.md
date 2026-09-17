@@ -72,13 +72,18 @@ curl -fsSL https://raw.githubusercontent.com/moresonsunn/Vaultora/main/install.s
 
 ## Reverse proxy (remote access)
 
-Vaultora is plain HTTP on `:8080`. For remote access put it behind your existing proxy (Nginx Proxy Manager / Caddy / Traefik) with HTTPS, then set `APP_URL` + `COOKIE_SECURE=1`. Example Caddy:
+Vaultora is plain HTTP on `:8090`. For remote access put it behind your existing proxy (Nginx Proxy Manager / Caddy / Traefik) with HTTPS, then set `APP_URL` + `COOKIE_SECURE=1`. Example Caddy:
 
 ```
 files.example.com {
-    reverse_proxy 127.0.0.1:8080
+    reverse_proxy 127.0.0.1:8090
 }
 ```
+
+> Do **not** enable HSTS on the proxy for a plain-HTTP Vaultora backend unless
+> the proxy itself terminates HTTPS for that exact host: browsers cache HSTS
+> per host and will then refuse the plain `http://` URL with
+> `net::ERR_SSL_PROTOCOL_ERROR`. Vaultora itself never sends HSTS headers.
 
 ## Troubleshooting
 

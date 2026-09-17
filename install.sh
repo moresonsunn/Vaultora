@@ -17,5 +17,5 @@ docker compose pull 2>/dev/null || true
 docker compose up -d
 
 echo ""
-echo "Vaultora is starting. Open http://<this-host>:${APP_PORT:-8080}"
+echo "Vaultora is starting. Open http://<this-host>:${APP_PORT:-8090}"
 echo "First login: user from ADMIN_USER in .env (default: admin)."

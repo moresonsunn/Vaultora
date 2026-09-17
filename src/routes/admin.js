@@ -93,7 +93,7 @@ router.get('/settings', (req, res) => {
   const rows = db.prepare('SELECT key, value FROM settings').all();
   const obj = {};
   for (const r of rows) obj[r.key] = r.value;
-  res.json({ settings: obj, storage_root: storageRoot(), port: process.env.PORT || '8080', uid: process.env.PUID || '', gid: process.env.PGID || '', tz: process.env.TZ || '', version: process.env.APP_VERSION || 'dev', commit: (process.env.GIT_COMMIT || '').slice(0, 12) || null });
+  res.json({ settings: obj, storage_root: storageRoot(), port: process.env.PORT || '8090', uid: process.env.PUID || '', gid: process.env.PGID || '', tz: process.env.TZ || '', version: process.env.APP_VERSION || 'dev', commit: (process.env.GIT_COMMIT || '').slice(0, 12) || null });
 });
 
 router.put('/settings', (req, res) => {

@@ -167,7 +167,7 @@ function migrate(d) {
 
 function defaultSettings() {
   return {
-    app_url: process.env.APP_URL || 'http://localhost:8080',
+    app_url: process.env.APP_URL || 'http://localhost:8090',
     session_ttl_hours: process.env.SESSION_TTL_HOURS || '72',
     max_file_size_bytes: process.env.MAX_FILE_SIZE || String(20 * 1024 * 1024 * 1024), // 20 GiB
     default_quota_bytes: process.env.DEFAULT_QUOTA || '', // empty = unlimited

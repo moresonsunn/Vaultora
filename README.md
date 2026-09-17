@@ -33,7 +33,7 @@ See [docs/CASAOS.md](docs/CASAOS.md) for the one-time store setup.
 ```bash
 cp .env.example .env   # edit ADMIN_PASSWORD, STORAGE_PATH, APPDATA_PATH, TZ, PUID/PGID
 docker compose up -d --build
-# open http://<host>:8080  → login with ADMIN_USER / ADMIN_PASSWORD
+# open http://<host>:8090  → login with ADMIN_USER / ADMIN_PASSWORD
 ```
 
 Change the **host** paths only (`STORAGE_PATH`, `APPDATA_PATH`); the container paths stay `/data` and `/app/data`.
@@ -42,11 +42,11 @@ Change the **host** paths only (`STORAGE_PATH`, `APPDATA_PATH`); the container p
 |---|---|---|
 | `STORAGE_PATH` | `./storage` | Host dir for your files → `/data` |
 | `APPDATA_PATH` | `./appdata` | Host dir for `vaultora.db` → `/app/data` |
-| `APP_PORT` | `8080` | Host port |
+| `APP_PORT` | `8090` | Host port |
 | `TZ` | `UTC` | Timezone (e.g. `Europe/Berlin`) |
 | `PUID`/`PGID` | `1000` | File ownership for created files (avoid root-owned uploads) |
 | `ADMIN_USER`/`ADMIN_PASSWORD` | `admin`/`changeme123` | Seed admin (first boot only — **change it**) |
-| `APP_URL` | `http://localhost:8080` | Base URL used in share links |
+| `APP_URL` | `http://localhost:8090` | Base URL used in share links |
 | `MAX_FILE_SIZE` | `21474836480` | Max upload bytes (20 GiB) |
 | `COOKIE_SECURE` | `0` | Set `1` behind HTTPS |
 
@@ -73,7 +73,7 @@ Back up exactly two things (see [docs/BACKUP.md](docs/BACKUP.md)):
 ```bash
 npm install
 npm test        # node:test suite (auth, files, shares, traversal guard, persistence)
-npm start       # PORT=8080 STORAGE_ROOT=./storage APP_DATA=./appdata node src/index.js
+npm start       # PORT=8090 STORAGE_ROOT=./storage APP_DATA=./appdata node src/index.js
 ```
 
 API reference: [openapi.yaml](openapi.yaml) (also served live at `/api/openapi.yaml`).

@@ -56,6 +56,12 @@ after(async () => {
   await fsp.rm(tmpData, { recursive: true, force: true }).catch(() => {});
 });
 
+test('no HSTS header (plain-HTTP LAN app must not poison browsers into https)', async () => {
+  const res = await fetch(base + '/');
+  assert.ok(!res.headers.get('strict-transport-security'), 'HSTS header must be absent');
+  assert.equal(res.status, 200);
+});
+
 test('bulk download is a valid store-only zip containing both files', async () => {
   const { res, data } = await req('/api/files/bulk-download', { method: 'POST', body: { paths: ['/My Files/Z'] } });
   assert.equal(res.status, 200);

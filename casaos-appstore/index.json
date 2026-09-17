@@ -19,7 +19,7 @@
       "icon": "https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/assets/vaultora-icon.png",
       "thumbnail": "https://raw.githubusercontent.com/moresonsunn/Vaultora/main/casaos-appstore/assets/vaultora-icon.png",
       "index": "Apps/vaultora/docker-compose.yml",
-      "port_map": "8080"
+      "port_map": "8090"
     }
   ]
 }
