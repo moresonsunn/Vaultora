@@ -12,6 +12,10 @@
   --card-shadow:0 1px 2px rgba(0,0,0,.4);
 }
 *{box-sizing:border-box}
+/* The layout uses display:flex/grid on #app/.login-wrap, which would override
+   the UA stylesheet's [hidden]{display:none}. Without this, hidden views
+   (login vs. app) stay painted on screen forever. */
+[hidden]{display:none!important}
 html,body{height:100%}
 body{margin:0;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Arial,sans-serif;background:var(--bg);color:var(--fg)}
 button,input,select,textarea{font:inherit;color:inherit}
