@@ -1,3 +1,12 @@
+# ---- frontend builder (React SPA, compiled to static files) ----
+FROM node:20 AS frontend
+WORKDIR /build/frontend
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci --no-audit --no-fund
+COPY frontend/ ./
+RUN npm run build
+
+# ---- runtime ----
 FROM node:20-alpine
 
 # Stamped by CI (Actions passes --build-arg). Shown in the UI footer + /api/version.
@@ -21,7 +30,7 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm install --omit=dev --no-audit --no-fund || npm install --omit=dev --no-audit --no-fund --build-from-source
 COPY src ./src
-COPY public ./public
+COPY --from=frontend /build/public ./public
 COPY openapi.yaml ./openapi.yaml
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh \

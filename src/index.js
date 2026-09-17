@@ -40,7 +40,7 @@ app.use(
         formAction: ["'self'"],
         frameAncestors: ["'self'"],
         objectSrc: ["'none'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         fontSrc: ["'self'", 'data:'],
         imgSrc: ["'self'", 'data:', 'blob:'],
@@ -172,9 +172,10 @@ app.get('/api/openapi.yaml', (req, res) => {
 // Share page + app shell (static). Short cache so clients pick up fixes fast.
 app.use(express.static(PUBLIC_DIR, { index: false, maxAge: '15m', dotfiles: 'ignore' }));
 
-// /s/:token share landing (serves app shell; JS fetches /api/public/:token)
+// /s/:token share landing is rendered by the SPA (public build, no inline
+// scripts — hence script-src needs no 'unsafe-inline').
 app.get('/s/:token', (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, 'share.html'));
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 app.get('/s/:token/download', (req, res) => {
   res.redirect(307, `/api/public/${encodeURIComponent(req.params.token)}/download${req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''}`);

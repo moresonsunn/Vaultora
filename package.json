@@ -9,6 +9,9 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "test": "node --test tests/app.test.js tests/extra.test.js",
+    "test:e2e": "node scripts/run-e2e.cjs",
+    "build": "npm run build:frontend",
+    "build:frontend": "npm --prefix frontend run build",
     "migrate": "node src/db.js --migrate-only"
   },
   "dependencies": {

@@ -25,6 +25,12 @@ jobs:
       - name: Install
         run: npm ci --no-audit --no-fund
 
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci --no-audit --no-fund
+
+      - name: Build frontend
+        run: npm run build:frontend
+
       - name: Run tests
         run: npm test
 
