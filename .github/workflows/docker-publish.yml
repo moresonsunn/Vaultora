@@ -8,6 +8,7 @@ on:
     branches: [main, master]
     paths:
       - 'src/**'
+      - 'frontend/**'
       - 'public/**'
       - 'Dockerfile'
       - 'entrypoint.sh'
