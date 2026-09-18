@@ -63,6 +63,7 @@ export interface ShareInfo {
   max_downloads: number | null;
   download_count: number;
   disabled: boolean;
+  allow_upload: boolean;
   created_at: string;
   owner?: string;
 }
@@ -85,6 +86,18 @@ export interface AuditItem {
   ip: string | null;
 }
 
+export interface VersionInfo {
+  id: string;
+  size: number;
+  mtime: string;
+}
+
+export interface ActivityItem {
+  at: string;
+  action: string;
+  detail: string | null;
+}
+
 export interface UploadStatus {
   id: string;
   filename: string;
@@ -104,6 +117,7 @@ export type ViewKind =
   | 'starred'
   | 'trash'
   | 'search'
+  | 'activity'
   | 'admin';
 
 export class ApiError extends Error {

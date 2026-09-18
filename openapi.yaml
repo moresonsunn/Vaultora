@@ -82,6 +82,18 @@ paths:
       responses: { '200': { description: results } }
   /api/files/usage:
     get: { summary: Own storage usage, responses: { '200': { description: usage } } }
+  /api/files/versions:
+    get:
+      summary: List versions of a file (kept on Replace uploads)
+      parameters:
+        - { name: path, in: query, required: true, schema: { type: string } }
+      responses: { '200': { description: versions } }
+  /api/files/versions/restore:
+    post: { summary: Restore a version (current content is versioned first), responses: { '200': { description: OK } } }
+  /api/files/versions/delete:
+    post: { summary: Delete one version, responses: { '200': { description: OK } } }
+  /api/files/activity:
+    get: { summary: Own activity feed (audit entries), responses: { '200': { description: activity } } }
   /api/uploads/simple:
     post: { summary: Multipart upload (small files), responses: { '201': { description: results } } }
   /api/uploads/init:
@@ -96,6 +108,8 @@ paths:
     post: { summary: Create share link, responses: { '201': { description: share } } }
   /api/public/{token}:
     get: { summary: Public share metadata (password via ?password=), responses: { '200': { description: share } } }
+  /api/public/{token}/upload:
+    post: { summary: Anonymous file drop (folder shares with allow_upload only), responses: { '201': { description: results } } }
   /api/admin/activity:
     get: { summary: Audit log (admin), responses: { '200': { description: log } } }
   /api/admin/settings:

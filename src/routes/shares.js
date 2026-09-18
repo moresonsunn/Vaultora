@@ -40,7 +40,7 @@ mgmt.use(requireAuth);
 mgmt.post('/', async (req, res) => {
   const db = getDb();
   try {
-    const { path: vpath, password = null, expires_at = null, max_downloads = null } = req.body || {};
+    const { path: vpath, password = null, expires_at = null, max_downloads = null, allow_upload = false } = req.body || {};
     if (!vpath) return res.status(400).json({ error: 'path required' });
     const r = resolveVPath(db, req.user, vpath);
     const abs = await realpathGuard(r.physAbs);
@@ -63,11 +63,12 @@ mgmt.post('/', async (req, res) => {
     const id = uuidv4();
     const token = randomToken(12);
     const now = new Date().toISOString();
-    db.prepare('INSERT INTO shares(id, token, owner_id, vpath, phys_rel, is_dir, password_hash, expires_at, max_downloads, created_at) VALUES(?,?,?,?,?,?,?,?,?,?)').run(
+    db.prepare('INSERT INTO shares(id, token, owner_id, vpath, phys_rel, is_dir, password_hash, expires_at, max_downloads, allow_upload, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(
       id, token, req.user.id, r.vpath, r.physRel, st.isDirectory() ? 1 : 0,
       password ? bcrypt.hashSync(String(password), 10) : null,
       exp ? exp.toISOString() : null,
       max_downloads != null && max_downloads !== '' ? Number(max_downloads) : null,
+      allow_upload && st.isDirectory() ? 1 : 0,
       now
     );
     audit(req, 'share_create', `${r.vpath} token=${token}`);
@@ -85,6 +86,7 @@ function toJson(req, row) {
     has_password: !!row.password_hash,
     expires_at: row.expires_at, max_downloads: row.max_downloads,
     download_count: row.download_count, disabled: !!row.disabled,
+    allow_upload: !!row.allow_upload,
     created_at: row.created_at,
   };
 }
@@ -102,12 +104,13 @@ mgmt.patch('/:id', (req, res) => {
   const row = db.prepare('SELECT * FROM shares WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'not found' });
   if (req.user.role !== 'admin' && row.owner_id !== req.user.id) return res.status(403).json({ error: 'forbidden' });
-  const { disabled, max_downloads, expires_at, password } = req.body || {};
-  db.prepare('UPDATE shares SET disabled = COALESCE(?, disabled), max_downloads = ?, expires_at = ?, password_hash = COALESCE(?, password_hash) WHERE id = ?').run(
+  const { disabled, max_downloads, expires_at, password, allow_upload } = req.body || {};
+  db.prepare('UPDATE shares SET disabled = COALESCE(?, disabled), max_downloads = ?, expires_at = ?, password_hash = COALESCE(?, password_hash), allow_upload = COALESCE(?, allow_upload) WHERE id = ?').run(
     disabled === undefined ? null : (disabled ? 1 : 0),
     max_downloads === undefined ? row.max_downloads : (max_downloads === '' || max_downloads == null ? null : Number(max_downloads)),
     expires_at === undefined ? row.expires_at : (expires_at ? new Date(expires_at).toISOString() : null),
     password ? bcrypt.hashSync(String(password), 10) : null,
+    allow_upload === undefined ? null : (allow_upload && row.is_dir ? 1 : 0),
     row.id
   );
   if (password === '') db.prepare('UPDATE shares SET password_hash = NULL WHERE id = ?').run(row.id);
@@ -176,6 +179,7 @@ pub.get('/api/public/:token', async (req, res) => {
     mime: isDir ? null : (mime.lookup(row.vpath) || 'application/octet-stream'),
     children: children.slice(0, 500),
     has_password: !!row.password_hash,
+    allow_upload: !!row.allow_upload,
   });
 });
 
@@ -232,6 +236,73 @@ pub.get('/api/public/:token/preview', async (req, res) => {
   res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(path.basename(guarded))}`);
   res.setHeader('X-Content-Type-Options', 'nosniff');
   fs.createReadStream(guarded).pipe(res);
+});
+
+// File drop: anonymous upload into a folder share (Nextcloud "file request").
+// Guarded by: link state, folder-only, allow_upload flag, optional password,
+// server max file size, OWNER quota, per-IP rate limit, audit trail.
+const multer = require('multer');
+const rateLimit = require('express-rate-limit');
+const { safeSegment } = require('../fsutil');
+const { effectiveQuota, userUsageBytes } = require('./files-shared');
+
+const dropUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 64 * 1024 * 1024, files: 5 },
+});
+const dropLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'too many uploads from this address, try again later' },
+});
+
+pub.post('/api/public/:token/upload', dropLimiter, dropUpload.array('file', 5), async (req, res) => {
+  const db = getDb();
+  try {
+    const { row, error, status } = getValidShare(req.params.token);
+    if (error) return res.status(status).json({ error });
+    if (!row.is_dir || !row.allow_upload) {
+      return res.status(403).json({ error: 'uploads are not enabled for this link' });
+    }
+    if (!checkSharePassword(row, req)) return res.status(401).json({ error: 'password required' });
+    if (!req.files || !req.files.length) return res.status(400).json({ error: 'no files' });
+    const owner = db.prepare('SELECT * FROM users WHERE id = ?').get(row.owner_id);
+    if (!owner || owner.disabled) return res.status(410).json({ error: 'link unavailable' });
+    const max = Number(getSetting(db, 'max_file_size_bytes', String(20 * 1024 ** 3))) || 20 * 1024 ** 3;
+    const quota = effectiveQuota(db, owner);
+    let used = await userUsageBytes(db, owner.username);
+    const destDir = await realpathGuard(path.join(storageRoot(), row.phys_rel));
+    await fsp.mkdir(destDir, { recursive: true });
+    const results = [];
+    for (const f of req.files) {
+      try {
+        if (f.size > max) throw new Error('exceeds max file size');
+        if (quota != null && used + f.size > quota) throw new Error('owner storage quota exceeded');
+        const name = safeSegment(f.originalname || 'upload');
+        let target = await realpathGuard(path.join(destDir, name));
+        let n = 1; // drops never overwrite: unique-ify
+        while (await fsp.stat(target).then(() => true).catch(() => false)) {
+          const ext = path.extname(target);
+          target = target.slice(0, target.length - ext.length) + ` (${n++})` + ext;
+        }
+        await fsp.writeFile(target, f.buffer);
+        used += f.size;
+        results.push({ name: path.basename(target), ok: true, size: f.size });
+      } catch (e) {
+        results.push({ name: f.originalname, ok: false, error: e.message });
+      }
+    }
+    try {
+      db.prepare("INSERT INTO audit_log(at, user_id, username, action, detail, ip) VALUES(datetime('now'), ?, (SELECT username FROM users WHERE id = ?), 'share_upload', ?)").run(
+        row.owner_id, row.owner_id, `token=${row.token} files=${results.filter((r) => r.ok).length} (anonymous)`
+      );
+    } catch { /* ignore */ }
+    res.status(201).json({ results });
+  } catch (e) {
+    res.status(500).json({ error: 'upload failed' });
+  }
 });
 
 module.exports = { mgmt, pub };

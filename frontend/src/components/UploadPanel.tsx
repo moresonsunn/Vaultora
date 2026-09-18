@@ -10,6 +10,8 @@ function statusLabel(j: UploadJob): string {
       return 'Uploading';
     case 'paused':
       return 'Paused';
+    case 'conflict':
+      return 'Already exists on server';
     case 'error':
       return `Error — ${j.error || 'failed'}`;
     case 'cancelled':
@@ -27,6 +29,7 @@ function UploadRow({ id }: { id: string }) {
   const cancel = useUploads((s) => s.cancel);
   const retry = useUploads((s) => s.retry);
   const dismiss = useUploads((s) => s.dismiss);
+  const decide = useUploads((s) => s.decide);
   if (!job) return null;
   const pct = job.total ? Math.round((Math.min(job.loaded, job.total) / job.total) * 100) : 100;
   const meta =
@@ -61,6 +64,12 @@ function UploadRow({ id }: { id: string }) {
           {job.status === 'paused' && (
             <>
               {small('Resume', () => resume(id))} {small('Cancel', () => cancel(id))}
+            </>
+          )}
+          {job.status === 'conflict' && (
+            <>
+              {small('Keep both', () => decide(id, 'keep'))} {small('Replace', () => decide(id, 'replace'))}{' '}
+              {small('Cancel', () => cancel(id))}
             </>
           )}
           {(job.status === 'error' || job.status === 'cancelled') && (

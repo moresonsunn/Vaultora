@@ -11,6 +11,7 @@ const NAV: { view: ViewKind; label: string; icon: IconName; admin?: boolean }[] 
   { view: 'shared', label: 'Shared', icon: 'shared' },
   { view: 'recent', label: 'Recent', icon: 'clock' },
   { view: 'starred', label: 'Starred', icon: 'star' },
+  { view: 'activity', label: 'Activity', icon: 'activity' },
   { view: 'trash', label: 'Trash', icon: 'trash' },
   { view: 'admin', label: 'Admin', icon: 'shield', admin: true },
 ];

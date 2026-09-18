@@ -163,6 +163,11 @@ function migrate(d) {
 
   const ver = d.prepare('SELECT MAX(version) AS v FROM schema_version').get().v || 0;
   if (ver < 1) d.prepare('INSERT INTO schema_version(version, applied_at) VALUES(1, datetime(\'now\'))').run();
+
+  // v2: file-drop shares (existing DBs need the column added)
+  ensureColumn(d, 'shares', 'allow_upload', 'INTEGER NOT NULL DEFAULT 0');
+  const ver2 = d.prepare('SELECT MAX(version) AS v FROM schema_version').get().v || 0;
+  if (ver2 < 2) d.prepare('INSERT INTO schema_version(version, applied_at) VALUES(2, datetime(\'now\'))').run();
 }
 
 function defaultSettings() {
@@ -191,6 +196,13 @@ function getDb() {
     migrate(db);
   }
   return db;
+}
+
+/** Additive migration for existing databases (CREATE TABLE IF NOT EXISTS
+ *  never alters them, so new columns go through here). */
+function ensureColumn(d, table, col, ddl) {
+  const cols = d.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  if (!cols.includes(col)) d.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${ddl}`);
 }
 
 function closeDb() {
@@ -224,4 +236,4 @@ if (require.main === module && process.argv.includes('--migrate-only')) {
   console.log('migrated', DB_PATH);
 }
 
-module.exports = { getDb, closeDb, getSetting, setSetting, defaultSettings, DB_PATH, DATA_DIR, newId, openDb, migrate };
+module.exports = { getDb, closeDb, ensureColumn, getSetting, setSetting, defaultSettings, DB_PATH, DATA_DIR, newId, openDb, migrate };

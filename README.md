@@ -8,6 +8,8 @@
 - 🖱️ Drag-and-drop uploader with progress, speed, ETA, cancel/retry + **chunked resumable uploads** for large files, folder upload
 - 👁️ Previews: images, video, audio, PDF, TXT/Markdown/JSON/CSV/code
 - 🔗 Secure share links (`/s/abc123`, filesystem path never exposed): password, expiry, max downloads, disable/regenerate
+- 📥 File drops — upload-enabled folder links anyone can send files to (with password/quota/audit protection)
+- 🕘 File versions — replacing a file keeps restorable history (max 10), plus a personal activity feed
 - 🗑️ Trash with restore / empty / auto-cleanup
 - 👤 Users, quotas, shared storage roots with read/write access, admin panel, audit log
 - 🔐 Sessions, bcrypt, optional TOTP 2FA, login rate limiting, CSRF, secure cookies, ClamAV-hook (optional)

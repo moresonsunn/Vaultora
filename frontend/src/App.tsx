@@ -13,7 +13,7 @@ import { Preview } from './components/Preview';
 import { ModalHost, PromptDialog, ConfirmDialog } from './components/Modal';
 import { Toasts } from './components/Toasts';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { FilesView, ResultsView, SharedView, TrashView } from './components/views';
+import { FilesView, ResultsView, SharedView, TrashView, ActivityView } from './components/views';
 import { Admin } from './components/Admin';
 import { SharePage } from './components/SharePage';
 
@@ -163,6 +163,8 @@ function Shell() {
                 )
               ) : view === 'trash' ? (
                 <TrashView />
+              ) : view === 'activity' ? (
+                <ActivityView />
               ) : view === 'shared' ? (
                 <SharedView />
               ) : view === 'recent' ? (

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fmtBytes } from '../lib/format';
 import { initTheme } from '../store/ui';
 
@@ -11,10 +11,10 @@ interface ShareMeta {
   mime: string | null;
   children: { name: string; is_dir: boolean; size: number; mtime: string }[];
   has_password: boolean;
+  allow_upload: boolean;
 }
 
-export function SharePage({ token }: { token: string }) {
-  const [meta, setMeta] = useState<ShareMeta | null>(null);
+export function SharePage({ token }: { token: string }) {  const [meta, setMeta] = useState<ShareMeta | null>(null);
   const [error, setError] = useState('');
   const [needPw, setNeedPw] = useState(false);
   const [pw, setPw] = useState('');
@@ -121,8 +121,7 @@ export function SharePage({ token }: { token: string }) {
           )}
           {meta && meta.is_dir && (
             <>
-              <h3 style={{ margin: '0 0 6px' }}>{meta.name}</h3>
-              <table className="admin-table">
+              <h3 style={{ margin: '0 0 6px' }}>{meta.name}</h3>              <table className="admin-table">
                 <tbody>
                   {meta.children.map((c) => (
                     <tr key={c.name}>
@@ -140,10 +139,85 @@ export function SharePage({ token }: { token: string }) {
                 </tbody>
               </table>
               {meta.children.length === 0 && <p className="muted">Empty folder.</p>}
+              {meta.allow_upload && <DropZone token={token} pw={pw} onDone={() => void load(pw)} />}
             </>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Anonymous file drop into an upload-enabled folder share. */
+function DropZone({ token, pw, onDone }: { token: string; pw: string; onDone: () => void }) {
+  const pick = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [pct, setPct] = useState(0);
+  const [msg, setMsg] = useState('');
+
+  function send(files: FileList | null): void {
+    if (!files || !files.length || busy) return;
+    setBusy(true);
+    setPct(0);
+    setMsg('');
+    const fd = new FormData();
+    Array.from(files)
+      .slice(0, 5)
+      .forEach((f) => fd.append('file', f, f.name));
+    const x = new XMLHttpRequest();
+    const params = pw ? `?password=${encodeURIComponent(pw)}` : '';
+    x.open('POST', `/api/public/${encodeURIComponent(token)}/upload${params}`);
+    x.upload.onprogress = (e) => {
+      if (e.lengthComputable) setPct(Math.round((e.loaded / e.total) * 100));
+    };
+    x.onload = () => {
+      setBusy(false);
+      if (x.status >= 200 && x.status < 300) {
+        try {
+          const d = JSON.parse(x.responseText) as { results: { ok: boolean; error?: string }[] };
+          const ok = d.results.filter((r) => r.ok).length;
+          const bad = d.results.filter((r) => !r.ok);
+          setMsg(bad.length ? `Uploaded ${ok}, failed: ${bad[0].error}` : `Uploaded ${ok} file(s). Thank you!`);
+          onDone();
+        } catch {
+          setMsg('Upload finished.');
+          onDone();
+        }
+      } else {
+        try {
+          setMsg((JSON.parse(x.responseText) as { error: string }).error || 'Upload failed');
+        } catch {
+          setMsg(`Upload failed (${x.status})`);
+        }
+      }
+    };
+    x.onerror = () => {
+      setBusy(false);
+      setMsg('Network error');
+    };
+    x.send(fd);
+    if (pick.current) pick.current.value = '';
+  }
+
+  return (
+    <div style={{ marginTop: 14, border: '2px dashed var(--line)', borderRadius: 12, padding: 16, textAlign: 'center' }}>
+      <p style={{ margin: '0 0 8px' }}>
+        <strong>File drop</strong> — send files to the owner here.
+      </p>
+      <button className="btn primary sm" disabled={busy} onClick={() => pick.current?.click()}>
+        {busy ? `Uploading… ${pct}%` : 'Choose files'}
+      </button>
+      {busy && (
+        <div className="bar" style={{ height: 6, background: 'var(--bg3)', borderRadius: 99, overflow: 'hidden', marginTop: 8 }}>
+          <i style={{ display: 'block', height: '100%', width: `${pct}%`, background: 'var(--acc)' }} />
+        </div>
+      )}
+      {msg && (
+        <p className="small muted" style={{ marginBottom: 0 }}>
+          {msg}
+        </p>
+      )}
+      <input ref={pick} type="file" multiple hidden onChange={(e) => send(e.target.files)} />
     </div>
   );
 }

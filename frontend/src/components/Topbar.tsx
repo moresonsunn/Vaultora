@@ -33,8 +33,10 @@ export function Topbar() {
           ? '/Recent'
           : view === 'starred'
             ? '/Starred'
-            : view === 'trash'
-              ? '/Trash'
+            : view === 'activity'
+              ? '/Activity'
+              : view === 'trash'
+                ? '/Trash'
               : view === 'admin'
                 ? '/Admin'
                 : '/Search';

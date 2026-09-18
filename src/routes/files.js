@@ -365,6 +365,168 @@ router.post('/trash/delete', async (req, res) => {
   }
 });
 
+// ---- File versions (Nextcloud-style history on overwrite) ----
+// Versions live as normal files under STORAGE_ROOT/.versions/<dir>/<base>.__v_<ts>_<size>
+// so they survive with plain filesystem tools. Capped at 10 per file.
+const MAX_VERSIONS = 10;
+
+function versionsDirFor(root, physRelDir) {
+  return path.join(root, '.versions', physRelDir);
+}
+
+function versionIdFor(base, size) {
+  return `${base}.__v_${Date.now()}_${size}`;
+}
+
+function parseVersionId(base, id) {
+  const prefix = `${base}.__v_`;
+  if (typeof id !== 'string' || !id.startsWith(prefix) || id.includes('/') || id.includes('\\') || id.includes('\0')) return null;
+  const rest = id.slice(prefix.length).split('_');
+  if (rest.length < 2) return null;
+  const ts = Number(rest[0]);
+  if (!Number.isFinite(ts)) return null;
+  return { id, ts };
+}
+
+/** Move an existing file into the versions store. Returns version id or null. */
+async function archiveVersion(db, user, physAbs) {
+  const st = await statSafe(physAbs);
+  if (!st || st.isDirectory()) return null;
+  const root = storageRoot();
+  const rel = path.relative(root, physAbs);
+  const dir = path.dirname(rel);
+  const base = path.basename(rel);
+  const vdir = versionsDirFor(root, dir);
+  await fsp.mkdir(vdir, { recursive: true });
+  const vid = versionIdFor(base, st.size);
+  await fsp.rename(physAbs, path.join(vdir, vid));
+  // prune beyond cap (oldest first)
+  try {
+    const entries = await fsp.readdir(vdir);
+    const mine = [];
+    for (const e of entries) {
+      if (!e.startsWith(`${base}.__v_`)) continue;
+      try {
+        const s = await fsp.stat(path.join(vdir, e));
+        mine.push({ name: e, mtime: s.mtime.getTime() });
+      } catch { /* ignore */ }
+    }
+    mine.sort((a, b) => b.mtime - a.mtime);
+    for (const extra of mine.slice(MAX_VERSIONS)) {
+      await fsp.rm(path.join(vdir, extra.name), { force: true });
+    }
+  } catch { /* pruning is best-effort */ }
+  return vid;
+}
+
+async function listVersions(root, physAbs) {
+  const rel = path.relative(root, physAbs);
+  const vdir = versionsDirFor(root, path.dirname(rel));
+  const base = path.basename(rel);
+  let entries;
+  try {
+    entries = await fsp.readdir(vdir);
+  } catch {
+    return [];
+  }
+  const out = [];
+  for (const e of entries) {
+    const parsed = parseVersionId(base, e);
+    if (!parsed) continue;
+    try {
+      const s = await fsp.stat(path.join(vdir, e));
+      if (s.isDirectory()) continue;
+      out.push({ id: e, size: s.size, mtime: s.mtime.toISOString() });
+    } catch { /* ignore */ }
+  }
+  out.sort((a, b) => new Date(b.mtime) - new Date(a.mtime));
+  return out;
+}
+
+// GET /api/files/versions?path= — list versions (read access is enough)
+router.get('/versions', async (req, res) => {
+  const db = getDb();
+  try {
+    const r = resolveVPath(db, req.user, req.query.path);
+    const abs = await realpathGuard(r.physAbs);
+    const versions = await listVersions(storageRoot(), abs);
+    res.json({ vpath: r.vpath, versions });
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message || 'versions failed' });
+  }
+});
+
+// POST /api/files/versions/restore {path, version}
+router.post('/versions/restore', async (req, res) => {
+  const db = getDb();
+  try {
+    const { path: vpath, version } = req.body || {};
+    if (!vpath || !version) return res.status(400).json({ error: 'path and version required' });
+    const r = resolveVPath(db, req.user, vpath);
+    assertCanWrite(db, req.user, r);
+    const abs = await realpathGuard(r.physAbs);
+    const root = storageRoot();
+    const rel = path.relative(root, abs);
+    const base = path.basename(rel);
+    if (!parseVersionId(base, version)) return res.status(400).json({ error: 'invalid version' });
+    const vdir = versionsDirFor(root, path.dirname(rel));
+    const src = await realpathGuard(path.join(vdir, version));
+    // must stay inside this file's versions dir (no cross-file access)
+    const realVdir = await realpathGuard(vdir).catch(() => null);
+    if (!realVdir || !(src === realVdir || src.startsWith(realVdir + path.sep))) {
+      return res.status(403).json({ error: 'forbidden' });
+    }
+    if (!(await statSafe(src))) return res.status(404).json({ error: 'version not found' });
+    await fsp.mkdir(path.dirname(abs), { recursive: true });
+    const cur = await statSafe(abs);
+    if (cur && !cur.isDirectory()) {
+      await archiveVersion(db, req.user, abs); // current becomes a version — restores never lose data
+    } else if (cur && cur.isDirectory()) {
+      return res.status(400).json({ error: 'cannot restore over a folder' });
+    }
+    await fsp.copyFile(src, abs);
+    audit(req, 'version_restore', `${r.vpath} <- ${version}`);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message || 'restore failed' });
+  }
+});
+
+// POST /api/files/versions/delete {path, version}
+router.post('/versions/delete', async (req, res) => {
+  const db = getDb();
+  try {
+    const { path: vpath, version } = req.body || {};
+    if (!vpath || !version) return res.status(400).json({ error: 'path and version required' });
+    const r = resolveVPath(db, req.user, vpath);
+    assertCanWrite(db, req.user, r);
+    const abs = await realpathGuard(r.physAbs);
+    const root = storageRoot();
+    const rel = path.relative(root, abs);
+    if (!parseVersionId(path.basename(rel), version)) return res.status(400).json({ error: 'invalid version' });
+    const target = await realpathGuard(path.join(versionsDirFor(root, path.dirname(rel)), version));
+    await fsp.rm(target, { force: true });
+    audit(req, 'version_delete', `${r.vpath} ${version}`);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(e.status || 500).json({ error: e.message || 'delete failed' });
+  }
+});
+
+// ---- Personal activity feed (own audit entries) ----
+router.get('/activity', (req, res) => {
+  const db = getDb();
+  try {
+    const limit = Math.min(100, parseInt(req.query.limit, 10) || 50);
+    const items = db
+      .prepare('SELECT at, action, detail FROM audit_log WHERE user_id = ? ORDER BY id DESC LIMIT ?')
+      .all(req.user.id, limit);
+    res.json({ items });
+  } catch {
+    res.status(500).json({ error: 'activity failed' });
+  }
+});
+
 // ---- Starred ----
 router.get('/starred', (req, res) => {
   const db = getDb();
@@ -751,3 +913,6 @@ router.get('/breakdown', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.archiveVersion = archiveVersion;
+module.exports.listVersions = listVersions;
+module.exports.MAX_VERSIONS = MAX_VERSIONS;

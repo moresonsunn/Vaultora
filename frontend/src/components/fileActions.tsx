@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { fmtBytes, fmtDate } from '../lib/format';
-import type { FileItem } from '../lib/types';
+import type { FileItem, VersionInfo } from '../lib/types';
 import { useFiles } from '../store/files';
 import { useUi } from '../store/ui';
 import { ConfirmDialog, DialogButtons, PromptDialog } from './Modal';
@@ -103,12 +103,13 @@ export function askDelete(paths: string[]): void {
   );
 }
 
-export function ShareDialog({ vpath }: { vpath: string }) {
+export function ShareDialog({ vpath, isDir }: { vpath: string; isDir: boolean }) {
   const closeModal = useUi((s) => s.closeModal);
   const toast = useUi((s) => s.toast);
   const [pw, setPw] = useState('');
   const [exp, setExp] = useState('');
   const [max, setMax] = useState('');
+  const [drop, setDrop] = useState(false);
   const [url, setUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -119,6 +120,7 @@ export function ShareDialog({ vpath }: { vpath: string }) {
       if (pw) body.password = pw;
       if (exp) body.expires_at = new Date(`${exp}T23:59:59`).toISOString();
       if (max) body.max_downloads = Number(max);
+      if (isDir && drop) body.allow_upload = true;
       const r = await api<{ share: { url: string } }>('/api/shares', { method: 'POST', body });
       setUrl(r.share.url);
     } catch (e) {
@@ -168,6 +170,19 @@ export function ShareDialog({ vpath }: { vpath: string }) {
           <input type="number" min={1} value={max} onChange={(e) => setMax(e.target.value)} placeholder="unlimited" />
         </div>
       </div>
+      {isDir && (
+        <label style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            type="checkbox"
+            checked={drop}
+            onChange={(e) => setDrop(e.target.checked)}
+            style={{ width: 'auto' }}
+          />
+          <span>
+            Allow upload <span className="muted small">(file drop — anyone with the link can add files here)</span>
+          </span>
+        </label>
+      )}
       <DialogButtons>
         <button className="btn ghost" onClick={closeModal}>
           Cancel
@@ -180,8 +195,8 @@ export function ShareDialog({ vpath }: { vpath: string }) {
   );
 }
 
-export function askShare(vpath: string): void {
-  useUi.getState().openModal(<ShareDialog vpath={vpath} />);
+export function askShare(vpath: string, isDir = false): void {
+  useUi.getState().openModal(<ShareDialog vpath={vpath} isDir={isDir} />);
 }
 
 export function DetailsDialog({ vpath }: { vpath: string }) {
@@ -233,4 +248,81 @@ export function DetailsDialog({ vpath }: { vpath: string }) {
 export function showDetails(vpath: string): Promise<void> {
   useUi.getState().openModal(<DetailsDialog vpath={vpath} />);
   return Promise.resolve();
+}
+
+export function VersionsDialog({ vpath }: { vpath: string }) {
+  const closeModal = useUi((s) => s.closeModal);
+  const toast = useUi((s) => s.toast);
+  const reload = useFiles((s) => s.reload);
+  const [versions, setVersions] = useState<VersionInfo[] | null>(null);
+  const [error, setError] = useState('');
+  const load = () => {
+    api<{ versions: VersionInfo[] }>('/api/files/versions', { query: { path: vpath } }).then(
+      (d) => {
+        setVersions(d.versions);
+        setError('');
+      },
+      (e: Error) => setError(e.message)
+    );
+  };
+  useEffect(load, [vpath]);
+  return (
+    <>
+      <h3>Versions</h3>
+      <div className="small muted mono">{vpath}</div>
+      <p className="small muted">Older copies are kept automatically when a file is replaced (max 10).</p>
+      {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
+      {versions === null && !error && <p className="muted">Loading…</p>}
+      {versions !== null && versions.length === 0 && <p className="muted">No older versions.</p>}
+      {versions !== null && versions.length > 0 && (
+        <table className="admin-table">
+          <tbody>
+            {versions.map((v) => (
+              <tr key={v.id}>
+                <td className="muted">{fmtDate(v.mtime)}</td>
+                <td className="muted">{fmtBytes(v.size)}</td>
+                <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <button
+                    className="btn sm"
+                    onClick={() =>
+                      api('/api/files/versions/restore', { method: 'POST', body: { path: vpath, version: v.id } }).then(
+                        () => {
+                          toast('Version restored');
+                          load();
+                          reload();
+                        },
+                        (e: Error) => toast(e.message)
+                      )
+                    }
+                  >
+                    Restore
+                  </button>{' '}
+                  <button
+                    className="btn sm danger"
+                    onClick={() =>
+                      api('/api/files/versions/delete', { method: 'POST', body: { path: vpath, version: v.id } }).then(
+                        () => load(),
+                        (e: Error) => toast(e.message)
+                      )
+                    }
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <DialogButtons>
+        <button className="btn" onClick={closeModal}>
+          Close
+        </button>
+      </DialogButtons>
+    </>
+  );
+}
+
+export function askVersions(vpath: string): void {
+  useUi.getState().openModal(<VersionsDialog vpath={vpath} />);
 }

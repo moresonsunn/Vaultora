@@ -98,12 +98,23 @@ router.post('/simple', upload.array('file', 20), async (req, res) => {
         await checkQuota(db, req.user, f.size);
         const name = safeSegment(f.originalname || 'upload');
         const target = await realpathGuard(path.join(destAbs, name));
-        // unique-ify
+        const overwrite = req.body && req.body.overwrite === '1';
         let finalT = target;
-        let n = 1;
-        while (await fsp.stat(finalT).then(() => true).catch(() => false)) {
-          const ext = path.extname(target);
-          finalT = target.slice(0, target.length - ext.length) + ` (${n++})` + ext;
+        if (overwrite) {
+          // Replace: the previous content becomes a restorable version first.
+          const { archiveVersion } = require('./files');
+          const existed = await fsp.stat(target).then((s) => !s.isDirectory()).catch(() => false);
+          if (existed) {
+            await archiveVersion(db, req.user, target);
+            audit(req, 'version_create', `${r.vpath}/${name}`);
+          }
+        } else {
+          // unique-ify
+          let n = 1;
+          while (await fsp.stat(finalT).then(() => true).catch(() => false)) {
+            const ext = path.extname(target);
+            finalT = target.slice(0, target.length - ext.length) + ` (${n++})` + ext;
+          }
         }
         await fsp.writeFile(finalT, f.buffer);
         const scan = await clamScanIfEnabled(db, finalT);
@@ -213,11 +224,21 @@ router.post('/:id/complete', async (req, res) => {
     const destDir = await realpathGuard(r.physAbs);
     await fsp.mkdir(destDir, { recursive: true });
     let target = await realpathGuard(path.join(destDir, safeSegment(row.filename)));
-    let n = 1;
-    while (await fsp.stat(target).then(() => true).catch(() => false)) {
-      const ext = path.extname(path.join(destDir, safeSegment(row.filename)));
-      const base = path.basename(path.join(destDir, safeSegment(row.filename)), ext);
-      target = path.join(destDir, `${base} (${n++})${ext}`);
+    const overwrite = req.body && (req.body.overwrite === true || req.body.overwrite === '1');
+    if (overwrite) {
+      const { archiveVersion } = require('./files');
+      const existed = await fsp.stat(target).then((s) => !s.isDirectory()).catch(() => false);
+      if (existed) {
+        await archiveVersion(db, req.user, target);
+        audit(req, 'version_create', `${r.vpath}/${safeSegment(row.filename)}`);
+      }
+    } else {
+      let n = 1;
+      while (await fsp.stat(target).then(() => true).catch(() => false)) {
+        const ext = path.extname(path.join(destDir, safeSegment(row.filename)));
+        const base = path.basename(path.join(destDir, safeSegment(row.filename)), ext);
+        target = path.join(destDir, `${base} (${n++})${ext}`);
+      }
     }
     await fsp.rename(tmpAbs, target);
     // truncate in case client overshot by a byte

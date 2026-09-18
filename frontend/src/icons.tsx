@@ -44,7 +44,9 @@ export type IconName =
   | 'play'
   | 'retry'
   | 'eye'
-  | 'info';
+  | 'info'
+  | 'activity'
+  | 'history';
 
 const paths: Record<IconName, React.ReactNode> = {
   home: <path d="M3 10.5 12 3l9 7.5M5 9.5V21h5v-6h4v6h5V9.5" />,
@@ -228,6 +230,13 @@ const paths: Record<IconName, React.ReactNode> = {
       <circle cx="12" cy="12" r="9" />
       <path d="M12 11v5" />
       <circle cx="12" cy="7.8" r="1.2" fill="currentColor" stroke="none" />
+    </>
+  ),
+  activity: <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
+  history: (
+    <>
+      <path d="M3 12a9 9 0 1 1 2.6 6.4M3 12V7m0 5h5" />
+      <path d="M12 8v4l3 2" />
     </>
   ),
 };

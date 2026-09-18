@@ -3,7 +3,7 @@
  * and typing in search can never stack stale responses. */
 import { create } from 'zustand';
 import { api, apiBlob } from '../lib/api';
-import type { FileItem, SearchItem, SortKey, SortOrder, TrashItem, ViewKind } from '../lib/types';
+import type { ActivityItem, FileItem, SearchItem, SortKey, SortOrder, TrashItem, ViewKind } from '../lib/types';
 import { useUi } from './ui';
 
 interface Usage {
@@ -44,6 +44,7 @@ interface FilesState {
   selection: Set<string>;
   usage: Usage | null;
   breakdown: Breakdown | null;
+  activity: ActivityItem[];
 
   go: (view: ViewKind, path?: string) => void;
   reload: () => void;
@@ -63,6 +64,7 @@ interface FilesState {
   trashRestore: (ids: string[]) => Promise<void>;
   trashDelete: (ids: string[]) => Promise<void>;
   trashEmpty: () => Promise<void>;
+  loadActivity: () => void;
   refreshStorage: () => Promise<void>;
   download: (vpath: string) => void;
   bulkDownload: (paths: string[]) => Promise<void>;
@@ -162,6 +164,17 @@ export const useFiles = create<FilesState>((set, get) => {
     }
   }
 
+  async function loadActivity(): Promise<void> {
+    set({ loading: true });
+    try {
+      const d = await api<{ items: ActivityItem[] }>('/api/files/activity', { query: { limit: 100 } });
+      set({ activity: d.items, loading: false, items: [], selection: new Set() });
+    } catch (e) {
+      set({ loading: false });
+      useUi.getState().toast((e as Error).message);
+    }
+  }
+
   return {
     view: 'files',
     path: '/My Files',
@@ -174,6 +187,7 @@ export const useFiles = create<FilesState>((set, get) => {
     selection: new Set(),
     usage: null,
     breakdown: null,
+    activity: [],
 
     go: (view, path) => {
       set({ view, selection: new Set() });
@@ -182,6 +196,7 @@ export const useFiles = create<FilesState>((set, get) => {
       else if (view === 'recent') void loadRecent();
       else if (view === 'starred') void loadStarred();
       else if (view === 'trash') void loadTrash();
+      else if (view === 'activity') void loadActivity();
     },
 
     reload: () => {
@@ -323,6 +338,10 @@ export const useFiles = create<FilesState>((set, get) => {
       await api('/api/files/trash/empty', { method: 'POST' });
       void loadTrash();
       void get().refreshStorage();
+    },
+
+    loadActivity: () => {
+      void loadActivity();
     },
 
     refreshStorage: async () => {

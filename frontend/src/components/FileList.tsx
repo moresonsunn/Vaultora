@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Icon, iconForKind } from '../icons';
+import { Icon, iconForKind, type IconName } from '../icons';
 import { fmtBytes, fmtDate } from '../lib/format';
 import type { FileItem } from '../lib/types';
 import { useFiles } from '../store/files';
 import { useUi } from '../store/ui';
 import { VirtualList } from './VirtualList';
-import { askCopy, askDelete, askMove, askRename, askShare, showDetails, downloadItem, openItem } from './fileActions';
+import { askCopy, askDelete, askMove, askRename, askShare, askVersions, showDetails, downloadItem, openItem } from './fileActions';
 
 export function FileThumb({ it, size = 30 }: { it: FileItem; size?: number }) {
   const [imgOk, setImgOk] = useState(true);
@@ -59,9 +59,7 @@ function RowMenu({ it, onClose }: { it: FileItem; onClose: () => void }) {
       {label}
     </button>
   );
-  const mi = (n: 'eye' | 'download' | 'star' | 'more' | 'link' | 'info' | 'trash' | 'check', s = 15) => (
-    <Icon name={n} size={s} />
-  );
+  const mi = (n: IconName, s = 15) => <Icon name={n} size={s} />;
   return (
     <div className="menu" ref={ref}>
       {item('Open', mi('eye'), () => openItem(it))}
@@ -72,7 +70,8 @@ function RowMenu({ it, onClose }: { it: FileItem; onClose: () => void }) {
       {item('Rename', mi('more'), () => askRename(it))}
       {item('Move', mi('check'), () => askMove([it.vpath]))}
       {item('Copy', mi('check'), () => askCopy([it.vpath]))}
-      {item('Share', mi('link'), () => askShare(it.vpath))}
+      {item('Share', mi('link'), () => askShare(it.vpath, it.is_dir))}
+      {!it.is_dir && item('Versions', mi('history'), () => askVersions(it.vpath))}
       {item('Details', mi('info'), () => void showDetails(it.vpath))}
       {item('Delete', mi('trash'), () => askDelete([it.vpath]), true)}
     </div>
@@ -97,9 +96,22 @@ export function FileList({ variant = 'files' }: { variant?: 'files' | 'results' 
   const allChecked = items.length > 0 && selection.size === items.length;
   const arrow = (s: string) => (sort === s ? (order === 'asc' ? ' ▲' : ' ▼') : '');
 
+  if (loading && items.length === 0) {
+    return (
+      <div className="skel" aria-label="Loading">
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="skel-row" />
+        ))}
+      </div>
+    );
+  }
+
   if (!loading && items.length === 0) {
     return (
       <div className="empty-state">
+        <div className="eico">
+          <Icon name="folder" size={30} />
+        </div>
         {variant === 'files' ? (
           <>
             This folder is empty.

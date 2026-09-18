@@ -3,7 +3,7 @@ import { Icon } from '../icons';
 import { fmtBytes } from '../lib/format';
 import type { FileItem } from '../lib/types';
 import { useFiles } from '../store/files';
-import { openItem, downloadItem, askRename, askMove, askCopy, askDelete, askShare, showDetails } from './fileActions';
+import { openItem, downloadItem, askRename, askMove, askCopy, askDelete, askShare, askVersions, showDetails } from './fileActions';
 import { useUi } from '../store/ui';
 
 const PAGE = 120;
@@ -39,7 +39,8 @@ function CardMenu({ it, onClose }: { it: FileItem; onClose: () => void }) {
       {b('Rename', () => askRename(it))}
       {b('Move', () => askMove([it.vpath]))}
       {b('Copy', () => askCopy([it.vpath]))}
-      {b('Share', () => askShare(it.vpath))}
+      {b('Share', () => askShare(it.vpath, it.is_dir))}
+      {!it.is_dir && b('Versions', () => askVersions(it.vpath))}
       {b('Details', () => void showDetails(it.vpath))}
       {b('Delete', () => askDelete([it.vpath]), true)}
     </div>
@@ -74,6 +75,9 @@ export function FileGrid() {
   if (!loading && items.length === 0) {
     return (
       <div className="empty-state">
+        <div className="eico">
+          <Icon name="folder" size={30} />
+        </div>
         This folder is empty.
         <br />
         Drag files here, or use <b>Upload</b>.

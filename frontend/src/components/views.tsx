@@ -5,6 +5,7 @@ import { useUi } from '../store/ui';
 import { ConfirmDialog } from './Modal';
 import { FileList } from './FileList';
 import { FileGrid } from './FileGrid';
+import type { IconName } from '../icons';
 
 export function FilesView() {
   const grid = useFiles((s) => s.grid);
@@ -57,8 +58,7 @@ export function SharedView() {
   );
 }
 
-export function TrashView() {
-  const trash = useFiles((s) => s.trash);
+export function TrashView() {  const trash = useFiles((s) => s.trash);
   const trashRestore = useFiles((s) => s.trashRestore);
   const trashDelete = useFiles((s) => s.trashDelete);
   const trashEmpty = useFiles((s) => s.trashEmpty);
@@ -130,5 +130,59 @@ export function TrashView() {
         </p>
       )}
     </>
+  );
+}
+
+const ACTIVITY_ICON: Record<string, IconName> = {
+  login: 'user',
+  logout: 'logout',
+  upload: 'upload',
+  download: 'download',
+  delete: 'trash',
+  rename: 'more',
+  move: 'check',
+  copy: 'check',
+  mkdir: 'folderPlus',
+  share_create: 'link',
+  share_access: 'eye',
+  share_update: 'link',
+  share_delete: 'link',
+  share_regenerate: 'refresh',
+  share_upload: 'upload',
+  trash_restore: 'refresh',
+  trash_empty: 'trash',
+  trash_delete: 'trash',
+  trash_cleanup: 'trash',
+  version_create: 'history',
+  version_restore: 'history',
+  version_delete: 'history',
+};
+
+export function ActivityView() {
+  const activity = useFiles((s) => s.activity);
+  const loading = useFiles((s) => s.loading);
+  if (loading) return <div className="muted small">Loading…</div>;
+  if (activity.length === 0) {
+    return <div className="empty-state">No activity yet. Uploads, deletes, shares and restores show up here.</div>;
+  }
+  return (
+    <table className="admin-table">
+      <tbody>
+        {activity.map((a, i) => (
+          <tr key={`${a.at}-${i}`}>
+            <td style={{ width: 36, color: 'var(--muted)' }}>
+              <Icon name={ACTIVITY_ICON[a.action] || 'info'} size={16} />
+            </td>
+            <td>
+              <strong>{a.action.replace(/_/g, ' ')}</strong>
+              {a.detail ? <span className="muted"> — {a.detail}</span> : null}
+            </td>
+            <td className="muted small" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+              {fmtDate(a.at)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
